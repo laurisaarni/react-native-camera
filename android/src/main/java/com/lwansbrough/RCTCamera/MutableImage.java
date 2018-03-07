@@ -14,6 +14,7 @@ import com.drew.metadata.Metadata;
 import com.drew.metadata.MetadataException;
 import com.drew.metadata.Tag;
 import com.drew.metadata.exif.ExifIFD0Directory;
+import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.facebook.react.bridge.ReadableMap;
 
 import java.io.BufferedInputStream;
@@ -171,7 +172,6 @@ public class MutableImage {
             ExifInterface exif = new ExifInterface(file.getAbsolutePath());
 
             // copy original exif data to the output exif...
-            // unfortunately, this Android ExifInterface class doesn't understand all the tags so we lose some
             for (Directory directory : originalImageMetaData().getDirectories()) {
                 for (Tag tag : directory.getTags()) {
                     int tagType = tag.getTagType();
@@ -179,6 +179,18 @@ public class MutableImage {
                     exif.setAttribute(tag.getTagName(), object.toString());
                 }
             }
+
+            // Add missing exif data from a sub directory
+           ExifSubIFDDirectory directory = originalImageMetaData()
+               .getFirstDirectoryOfType(ExifSubIFDDirectory.class);
+           for (Tag tag : directory.getTags()) {
+               int tagType = tag.getTagType();
+               // As some of exif data does not follow naming of the ExifInterface the names need
+               // to be transformed into Upper camel case format.
+               String tagName = tag.getTagName().replaceAll(" ", "");
+               Object object = directory.getObject(tagType);
+               exif.setAttribute(tagName, object.toString());
+           }
 
             writeLocationExifData(options, exif);
 
